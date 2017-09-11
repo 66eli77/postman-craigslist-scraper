@@ -1,0 +1,137 @@
+{
+	"variables": [],
+	"info": {
+		"name": "craigslist-scraper",
+		"_postman_id": "e3372f70-9a4f-744c-0aa9-0a3c5d0b9fe2",
+		"description": "",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Query Craigslist",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"require('cheerio'),",
+							"$ = cheerio.load(pm.response.text());",
+							"const results = $('.rows').children('li');",
+							"",
+							"// Get the first 5 results.",
+							"const craigslist_results = {",
+							"    \"text\": \"*Top 5 Craigslist results today*\",",
+							"};",
+							"for(var i = 0; i < 5; i++) {",
+							"    craigslist_results.text += '\\n*' + (i + 1) + '.* ' + extractInfo(results.eq(i)) + '\\n';",
+							"}",
+							"pm.environment.set(\"craigslist_results\", JSON.stringify(craigslist_results));",
+							"",
+							"function extractInfo(obj) {",
+							"    const price = obj.children('p').children('.result-meta').children('.result-price').text();",
+							"    const title = obj.children('p').children('a').text();",
+							"    const neighborhood = obj.children('p').children('.result-meta').children('.result-hood').text();",
+							"    const url = '<https://' + pm.environment.get('location') + '.craigslist.org' + obj.children('a').attr('href');",
+							"    ",
+							"    return price + ' -- ' + url + '|' + title + '>' + neighborhood;",
+							"}",
+							""
+						]
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.environment.set(\"location\", \"sfbay\");    // set your search location.",
+							"pm.environment.set(\"max_price\", \"2000\");    // set your search pricce range.",
+							"pm.environment.set(\"query\", \"bart\");        // set your search query.",
+							""
+						]
+					}
+				}
+			],
+			"request": {
+				"url": {
+					"raw": "https://{{location}}.craigslist.org/search/roo?query={{query}}&min_price=200&max_price={{max_price}}&availabilityMode=0",
+					"protocol": "https",
+					"host": [
+						"{{location}}",
+						"craigslist",
+						"org"
+					],
+					"path": [
+						"search",
+						"roo"
+					],
+					"query": [
+						{
+							"key": "query",
+							"value": "{{query}}",
+							"equals": true,
+							"description": ""
+						},
+						{
+							"key": "min_price",
+							"value": "200",
+							"equals": true,
+							"description": ""
+						},
+						{
+							"key": "max_price",
+							"value": "{{max_price}}",
+							"equals": true,
+							"description": ""
+						},
+						{
+							"key": "availabilityMode",
+							"value": "0",
+							"equals": true,
+							"description": ""
+						}
+					],
+					"variable": []
+				},
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Slack me",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests['Got a 200 response from Slack'] = pm.response.reason() === 'OK';",
+							""
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{webhook}}",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{craigslist_results}}"
+				},
+				"description": ""
+			},
+			"response": []
+		}
+	]
+}
